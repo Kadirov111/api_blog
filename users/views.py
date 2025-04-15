@@ -1,18 +1,14 @@
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.contrib.auth.models import User
+from rest_framework.permissions import IsAuthenticated
+from .models import UserProfile
+from .serializers import UserProfileSerializer
 from django.shortcuts import get_object_or_404
 
-from posts.models import Post
-from posts.serializers import PostSerializer
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
 
-class AuthorPosts(APIView):
-    serializer_class = PostSerializer
-    permission_classes = [AllowAny]
-
-    def get(self, request, username):
-        user = get_object_or_404(User, username=username)
-        posts = Post.objects.filter(author=user)
-        serializer = PostSerializer(posts, many=True)
+    def get(self, request):
+        profile = get_object_or_404(UserProfile, user=request.user)
+        serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
