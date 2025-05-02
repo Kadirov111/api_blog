@@ -1,10 +1,13 @@
 from rest_framework import viewsets
+from rest_framework.permissions import IsAdminUser, AllowAny
 from .models import Category
 from .serializers import CategorySerializer
-from .permissions import IsAdminOrReadOnly
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
-    permission_classes = [IsAdminOrReadOnly]
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'destroy']:
+            return [IsAdminUser()]
+        return [AllowAny()]

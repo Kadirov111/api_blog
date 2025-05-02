@@ -1,14 +1,16 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, permissions
+from django.contrib.auth.models import User
 from .models import UserProfile
-from .serializers import UserProfileSerializer
-from django.shortcuts import get_object_or_404
+from .serializers import UserProfileSerializer, UserSerializer
 
-class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        profile = get_object_or_404(UserProfile, user=request.user)
-        serializer = UserProfileSerializer(profile)
-        return Response(serializer.data)
+    def get_object(self):
+        return UserProfile.objects.get(user=self.request.user)
+
+class UserDetailView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'

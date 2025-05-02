@@ -1,35 +1,39 @@
-from rest_framework import viewsets
-from rest_framework.views import APIView
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
-from django.shortcuts import get_object_or_404
-
-from .models import Post, PostLike, Tag, Category
-from .serializers import PostSerializer, PostLikeSerializer, TagSerializer
-from category.serializers import CategorySerializer
-from .permissions import IsPostAuthorOrAdminOrReadOnly, IsLikeOwnerOrReadOnly, IsAdminOrReadOnly
+from .models import Post, Tag, PostLike
+from .serializers import PostSerializer, TagSerializer, PostLikeSerializer
+from .permissions import IsPostAuthorOrAdminOrReadOnly
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
-    lookup_field = 'slug'
+    permission_classes = [IsPostAuthorOrAdminOrReadOnly]
 
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [AllowAny()]
-        elif self.action == 'create':
-            return [IsAuthenticated()]
-        return [IsPostAuthorOrAdminOrReadOnly()]
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
-
-class PostLikeViewSet(viewsets.ModelViewSet):
-    queryset = PostLike.objects.all()
-    serializer_class = PostLikeSerializer
-    permission_classes = [IsAuthenticated, IsLikeOwnerOrReadOnly]
-
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        value = request.data.get('value')  # like/dislike
+        like, created = PostLike.objects.update_or_create(
+            post=post, user=request.user, defaults={'value': value})
+        return Response({'status': 'liked'}, status=status.HTTP_200_OK)
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = [IsAdminOrReadOnly]
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'destroy']:
+            return [IsAdminUser()]
+        return [AllowAny()]
+class PostLikeViewSet(viewsets.ModelViewSet):
+    queryset = PostLike.objects.all()
+    serializer_class = PostLikeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
